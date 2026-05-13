@@ -6,7 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 
 /**
  * <p>
- * 用户信息�?Mapper 接口
+ * 用户信息 Mapper 接口。
  * </p>
  *
  * @author codex

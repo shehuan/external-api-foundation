@@ -5,34 +5,41 @@ import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * 请求重放防护配置�? *
- * <p>配置前缀：app.security.replay�?/p>
+ * 请求重放防护配置。
+ *
+ * <p>配置前缀：app.security.replay。</p>
  */
 @ConfigurationProperties(prefix = "app.security.replay")
 public class ReplayProtectionProperties {
 
     /**
-     * 请求重放防护总开关�?     */
+     * 请求重放防护总开关。
+     */
     private boolean enabled = false;
 
     /**
-     * 允许的时间戳偏移窗口，单位秒�?     */
+     * 允许的时间戳偏移窗口，单位秒。
+     */
     private long timestampWindowSeconds = 300;
 
     /**
-     * 服务端约定的验签算法。调用方不需要通过请求头传算法�?     */
+     * 服务端约定的验签算法。调用方不需要通过请求头传算法。
+     */
     private String signatureAlgorithm = "HMAC_SHA256";
 
     /**
-     * 需要启用重放防护的路径�?     */
+     * 需要启用重放防护的路径。
+     */
     private List<String> includePaths = new ArrayList<>();
 
     /**
-     * 不启用重放防护的路径，优先级高于 includePaths�?     */
+     * 不启用重放防护的路径，优先级高于 includePaths。
+     */
     private List<String> excludePaths = new ArrayList<>();
 
     /**
-     * 外部调用方配置，用于通过 appId 查找验签密钥材料�?     */
+     * 外部调用方配置，用于通过 appId 查找验签密钥材料。
+     */
     private List<ApiClient> clients = new ArrayList<>();
 
     public boolean isEnabled() {
@@ -85,17 +92,21 @@ public class ReplayProtectionProperties {
 
     public static class ApiClient {
         /**
-         * 调用方应用标识，对应请求�?X-App-Id�?         */
+         * 调用方应用标识，对应请求头 X-App-Id。
+         */
         private String appId;
 
         /**
-         * 验签密钥材料或密钥引用�?         *
-         * <p>HMAC 场景下表示共享密钥；RSA/SM2 场景下可以表示调用方公钥�?         * KMS/证书场景下可以表�?keyId 或证�?ID�?/p>
+         * 验签密钥材料或密钥引用。
+         *
+         * <p>HMAC 场景下表示共享密钥；RSA/SM2 场景下可以表示调用方公钥；
+         * KMS/证书场景下可以表示 keyId 或证书 ID。</p>
          */
         private String signatureKey;
 
         /**
-         * 当前调用方是否启用�?         */
+         * 当前调用方是否启用。
+         */
         private boolean enabled = true;
 
         public String getAppId() {

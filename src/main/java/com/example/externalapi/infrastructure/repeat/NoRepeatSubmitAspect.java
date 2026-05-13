@@ -16,9 +16,10 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
- * 防重复提交切面�? *
- * <p>拦截标注�?{@link NoRepeatSubmit} 的方法，在业务方法执行前�?Redis SET NX 做短期占位�?/p>
- * <p>如果占位失败，说明同一个身份、同一个接口、同一个请求体在时间窗口内已经提交过，直接返回错误�?/p>
+ * 防重复提交切面。
+ *
+ * <p>拦截标注 {@link NoRepeatSubmit} 的方法，在业务方法执行前用 Redis SET NX 做短期占位。</p>
+ * <p>如果占位失败，说明同一个身份、同一个接口、同一个请求体在时间窗口内已经提交过，直接返回错误。</p>
  */
 @Aspect
 @Component
@@ -34,30 +35,26 @@ public class NoRepeatSubmitAspect {
 
     @Around("@annotation(noRepeatSubmit)")
     public Object around(ProceedingJoinPoint joinPoint, NoRepeatSubmit noRepeatSubmit) throws Throwable {
-        // 第一步：总开关关闭时，不做任何拦截�?
+        // 运行时读取总开关，便于通过配置关闭整个防重复提交模块。
         if (!repeatSubmitProperties.isEnabled()) {
             return joinPoint.proceed();
         }
 
-        // 第二步：获取当前 HTTP 请求。非 Web 调用场景下直接放行。
+        // 非 Web 调用不在该防护范围内，直接放行。
         HttpServletRequest request = currentRequest();
         if (request == null) {
             return joinPoint.proceed();
         }
 
-        // 第三步：计算防重复窗口。注解优先，没有配置则使用全局默认秒数�?
         long seconds = noRepeatSubmit.seconds() > 0 ? noRepeatSubmit.seconds() : repeatSubmitProperties.getDefaultSeconds();
-
-        // 第四步：构�?Redis key。key 中包含用�?IP、请求方法、URI、请求体摘要�?
         String key = buildKey(request);
 
-        // 第五步：使用 Redis SET NX EX。第一次提交成功写入，重复提交会写入失败�?
+        // SET NX EX：第一次提交写入成功，窗口期内相同提交会写入失败。
         Boolean success = stringRedisTemplate.opsForValue().setIfAbsent(key, "1", Duration.ofSeconds(seconds));
         if (!Boolean.TRUE.equals(success)) {
             throw new BizException(ErrorCode.REPEAT_SUBMIT, noRepeatSubmit.message());
         }
 
-        // 第六步：占位成功后执行业务方法�?
         return joinPoint.proceed();
     }
 
@@ -69,11 +66,11 @@ public class NoRepeatSubmitAspect {
     }
 
     private String buildKey(HttpServletRequest request) {
-        // 优先使用登录用户 ID；未登录接口则退化为客户�?IP�?
+        // 优先使用登录用户 ID；公开接口退化为客户端 IP。
         Long userId = CurrentUserContext.getUserId();
         String identity = userId == null ? getClientIp(request) : String.valueOf(userId);
 
-        // 请求体参与 key 计算，避免同一接口不同参数被错误拦截。
+        // key 中包含请求体摘要，避免同一接口的不同参数被互相拦截。
         byte[] body = request instanceof CachedBodyHttpServletRequest cachedRequest
                 ? cachedRequest.getCachedBody()
                 : new byte[0];
@@ -82,7 +79,7 @@ public class NoRepeatSubmitAspect {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        // 优先读取代理转发头，适配 Nginx、网关等部署方式�?
+        // 优先读取代理转发头，适配 Nginx、网关等部署方式。
         String xForwardedFor = request.getHeader("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isBlank()) {
             return xForwardedFor.split(",")[0].trim();

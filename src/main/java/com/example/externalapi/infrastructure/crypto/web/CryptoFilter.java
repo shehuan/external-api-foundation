@@ -34,8 +34,8 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 /**
  * 请求解密、响应加密过滤器。
  *
- * <p>安全协议元数据统一放在 Header 中。</p>
- * <p>X-App-Id / X-Crypto-Algorithm / X-Crypto-Encrypted-Key / X-Crypto-IV。</p>
+ * <p>安全协议元数据统一放在 Header 中：
+ * X-App-Id / X-Crypto-Algorithm / X-Crypto-Encrypted-Key / X-Crypto-IV。</p>
  *
  * <p>请求体只承载业务明文 JSON，或者只承载 CryptoEnvelope.data 密文载荷。</p>
  */
@@ -68,11 +68,9 @@ public class CryptoFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        // 第一步：请求解密、响应加密分别按路径规则判断。
         boolean decryptRequest = requires(request, properties.getRequestDecrypt());
         boolean encryptResponse = requires(request, properties.getResponseEncrypt());
 
-        // 第二步：当前接口不涉及加解密时直接放行。
         if (!decryptRequest && !encryptResponse) {
             filterChain.doFilter(request, response);
             return;
@@ -83,14 +81,13 @@ public class CryptoFilter extends OncePerRequestFilter {
         CryptoKey key;
         PayloadCryptoProvider provider;
         try {
-            // 第三步：只要请求解密或响应加密任一生效，就必须从 Header 解析本次加密元数据。
+            // 只要当前路径启用了请求解密或响应加密，就必须先解析协议元数据。
             metadata = resolveMetadata(request);
             context = buildContext(request);
             key = cryptoKeyResolver.resolve(context, metadata);
             provider = providerRegistry.getProvider(metadata.algorithm());
 
-            // 第四步：给具体算法一次准备会话的机会。
-            // 混合加密可在这里解开 encryptedKey，并把临时对称密钥放入 context.attributes。
+            // 算法实现可在这里准备请求级材料，例如解密后的 AES 临时密钥。
             provider.prepare(metadata, key, context);
 
             request.setAttribute(CRYPTO_METADATA_ATTRIBUTE, metadata);
@@ -107,49 +104,39 @@ public class CryptoFilter extends OncePerRequestFilter {
         HttpServletRequest requestToUse = request;
         if (decryptRequest) {
             try {
-                // 第五步：如果当前路径要求请求解密，则把请求体 CryptoEnvelope.data 解密成明文 JSON。
-                // 解密后返回新的 HttpServletRequestWrapper，后续 Controller 读取到的是明文 JSON。
+                // 在 Controller 读取前，把密文请求包装成明文 JSON 请求。
                 requestToUse = decryptRequest(request, metadata, key, context, provider);
             } catch (BizException exception) {
-                // 第六步：请求解密阶段发生可识别业务异常时，直接返回统一错误响应。
-                // 这类错误通常发生在进入 Controller 之前，不再尝试加密错误响应。
+                // 解密失败发生在 Controller 前，直接返回普通错误响应，不再尝试加密错误体。
                 JsonResponseWriter.write(response, objectMapper, exception.getErrorCode(), exception.getMessage());
                 return;
             } catch (Exception exception) {
-                // 第七步：未知解密异常统一收敛为 DECRYPT_FAILED，避免向外暴露算法内部细节。
                 JsonResponseWriter.write(response, objectMapper, ErrorCode.DECRYPT_FAILED);
                 return;
             }
         }
 
         if (!encryptResponse) {
-            // 第八步：如果当前路径不要求响应加密，则直接使用原 request 或解密后的 request 继续执行。
-            // 这对应“请求明文 + 响应明文”或“请求密文 + 响应明文”两类场景。
             filterChain.doFilter(requestToUse, response);
             return;
         }
 
-        // 第九步：当前路径要求响应加密，需要先缓存后续链路写出的响应体。
-        // 如果不使用 ContentCachingResponseWrapper，Controller 写出的 body 会直接发送给客户端，无法再改写 data。
+        // 缓存下游响应，便于把 ApiResponse.data 替换为加密信封。
         ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
         try {
-            // 第十步：继续执行后续 Filter、Controller、全局异常处理器。
-            // 如果前面执行了解密，这里传入的是明文请求体包装器。
             filterChain.doFilter(requestToUse, responseWrapper);
         } finally {
             if (!responseWrapper.isCommitted()) {
-                // 第十一步：下游处理完成后，再读取缓存的 ApiResponse，并只加密其中的 data 字段。
-                // code/message/traceId 保持明文，便于调用方、网关和日志快速判断请求结果。
+                // code/message/traceId 保持明文，只有 data 对调用方加密。
                 encryptResponseSafely(requestToUse, responseWrapper);
             }
-            // 第十二步：必须调用 copyBodyToResponse，否则缓存中的响应体不会真正写回客户端。
+            // ContentCachingResponseWrapper 必须回写，否则缓存中的响应体不会发送给客户端。
             responseWrapper.copyBodyToResponse();
         }
     }
 
     private HttpServletRequest decryptRequest(HttpServletRequest request, CryptoMetadata metadata, CryptoKey key,
             CryptoContext context, PayloadCryptoProvider provider) throws IOException {
-        // 第一步：请求需要解密时，请求体必须是 CryptoEnvelope。
         String body = getRequestBody(request);
         if (body == null || body.isBlank()) {
             throw new BizException(ErrorCode.ENCRYPTED_BODY_INVALID);
@@ -165,7 +152,6 @@ public class CryptoFilter extends OncePerRequestFilter {
             throw new BizException(ErrorCode.ENCRYPTED_BODY_INVALID);
         }
 
-        // 第二步：调用算法实现解密 data，得到明文 JSON。
         String plainText = provider.decrypt(envelope, metadata, key, context);
         if (plainText == null || plainText.isBlank()) {
             throw new BizException(ErrorCode.ENCRYPTED_BODY_INVALID);
@@ -173,7 +159,7 @@ public class CryptoFilter extends OncePerRequestFilter {
 
         request.setAttribute(RequestLogAttributes.PLAIN_REQUEST_BODY, plainText);
 
-        // 第三步：把请求体替换成明文 JSON，后续 Controller 不感知加密细节。
+        // Controller 和参数校验层看到的是和未启用传输加密时一致的 JSON 结构。
         return new DecryptedBodyHttpServletRequest(request, plainText.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -207,7 +193,6 @@ public class CryptoFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 仍然只加密统一响应结构中的 data，code/message/traceId 保持明文。
         JsonNode dataNode = objectNode.get("data");
         if (dataNode == null || dataNode.isNull()) {
             return;

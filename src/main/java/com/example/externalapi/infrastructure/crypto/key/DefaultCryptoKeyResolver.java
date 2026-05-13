@@ -12,8 +12,8 @@ import org.springframework.stereotype.Component;
 /**
  * 默认密钥解析器。
  *
- * <p>当前版本按 {@code X-App-Id} 在 {@code app.crypto.clients} 中查找密钥。生产环境如果需要密钥轮换、
- * KMS 托管或多租户隔离，可以替换该实现。</p>
+ * <p>当前版本按 {@code X-App-Id} 在 {@code app.crypto.clients} 中查找密钥。
+ * 生产环境如果需要密钥轮换、KMS 托管或多租户隔离，可以替换该实现。</p>
  */
 @Component
 public class DefaultCryptoKeyResolver implements CryptoKeyResolver {

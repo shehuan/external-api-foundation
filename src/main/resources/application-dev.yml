@@ -1,28 +1,37 @@
+# 本地开发环境配置。生产密钥不要放在这个文件里。
 spring:
   datasource:
+    # 本地 MySQL 数据库，用于示例表和 MyBatis-Plus Mapper。
     url: jdbc:mysql://localhost:3306/demo_service?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: 123456
   data:
     redis:
+      # 本地 Redis 供防重复提交、幂等、分布式锁和重放 nonce 存储使用。
       host: localhost
       port: 6379
       database: 0
 
 app:
   jwt:
+    # 本地 token 签名密钥，Base64 编码；不同环境应单独替换。
     secret: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+    # 本地 access token 有效期，单位分钟。
     access-token-expire-minutes: 120
 
   security:
     replay:
       clients:
+        # 重放签名示例调用方。
         - app-id: partner-a
+          # 仅用于本地验签的 HMAC 共享密钥。
           signature-key: secret-a
           enabled: true
 
   crypto:
     clients:
+      # 根据 X-App-Id 解析的示例加解密调用方。
       - app-id: partner-a
+        # 占位密钥材料；非开发环境应替换为真实共享密钥、keyId 或 KMS 引用。
         secret: placeholder-secret
         enabled: true

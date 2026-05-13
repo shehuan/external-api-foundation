@@ -4,13 +4,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 加解密请求上下文�? *
- * <p>这个对象只在一�?HTTP 请求内有效，用于把“请求解密阶段”的信息传递给“响应加密阶段”�?/p>
+ * 加解密请求上下文。
+ *
+ * <p>这个对象只在一次 HTTP 请求内有效，用于把“请求解密阶段”的信息传递给“响应加密阶段”。</p>
  *
  * <p>典型用途：</p>
- * <p>1. 保存 appId、请求路径、traceId 等基础信息�?/p>
- * <p>2. 混合加密时，算法实现可以把本次请求解析出的临时对称密钥放�?attributes�?/p>
- * <p>3. 响应加密时，算法实现再从 attributes 取出同一个临时对称密钥加密响应�?/p>
+ * <p>1. 保存 appId、请求路径、traceId 等基础信息。</p>
+ * <p>2. 混合加密时，算法实现可以把本次请求解析出的临时对称密钥放到 attributes。</p>
+ * <p>3. 响应加密时，算法实现再从 attributes 取出同一个临时对称密钥加密响应。</p>
  */
 public class CryptoContext {
 
@@ -23,9 +24,10 @@ public class CryptoContext {
     private String traceId;
 
     /**
-     * 算法扩展参数�?     *
-     * <p>框架本身不会解析这里面的值，只负责在同一次请求内保存和传递�?/p>
-     * <p>例如：RSA + AES 混合加密时，可以把解密后�?AES key 放到这里�?/p>
+     * 算法扩展参数。
+     *
+     * <p>框架本身不会解析这里面的值，只负责在同一次请求内保存和传递。</p>
+     * <p>例如：RSA + AES 混合加密时，可以把解密后的 AES key 放到这里。</p>
      */
     private final Map<String, Object> attributes = new HashMap<>();
 

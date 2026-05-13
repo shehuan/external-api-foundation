@@ -1,40 +1,61 @@
+# 通用配置。环境相关配置放在 application-dev.yml 等 profile 文件中。
 server:
+  # 内嵌 Web 服务监听端口。
   port: 8080
+  # 关闭进程前允许 Spring 先处理完正在执行的请求。
   shutdown: graceful
 
 spring:
   application:
+    # 应用名，用于日志、监控和后续服务发现标识。
     name: external-api-foundation
   profiles:
+    # 默认使用本地开发配置，其他环境建议通过 SPRING_PROFILES_ACTIVE 覆盖。
     active: dev
   lifecycle:
+    # 优雅停机时每个关闭阶段的最长等待时间。
     timeout-per-shutdown-phase: 30s
   jackson:
+    # 统一 JSON 时间序列化时区。
     time-zone: Asia/Shanghai
     date-format: yyyy-MM-dd HH:mm:ss
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
+      # 连接池名称会出现在监控指标和线程栈中。
       pool-name: DemoHikariCP
+      # 保持少量空闲连接，降低普通请求获取连接的延迟。
       minimum-idle: 5
+      # 单个服务实例最多持有的数据库连接数。
       maximum-pool-size: 20
+      # 获取连接的最长等待时间，超过后快速失败。
       connection-timeout: 30000
+      # 超过 minimum-idle 的空闲连接在该时间后回收。
       idle-timeout: 600000
+      # 连接最长生命周期，应小于数据库或网关侧连接超时时间。
       max-lifetime: 1800000
+      # Hikari 校验连接可用性的超时时间。
       validation-timeout: 5000
   data:
     redis:
+      # Redis 命令超时时间，影响分布式锁、nonce、幂等和防重复提交模块。
       timeout: 3s
 
 mybatis-plus:
+  # XML Mapper 扫描路径，classpath* 允许从多个 classpath 根加载。
   mapper-locations: classpath*:com/example/externalapi/mapper/**/*.xml
+  # MyBatis 类型别名所在实体包。
   type-aliases-package: com.example.externalapi.entity
   configuration:
+    # 数据库下划线字段自动映射为 Java 驼峰属性。
     map-underscore-to-camel-case: true
+    # SQL 日志交给 SLF4J，由 logback 统一控制级别和输出位置。
     log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
   global-config:
     db-config:
+      # 默认使用 MyBatis-Plus 分布式 ID，单表可通过注解覆盖。
       id-type: assign_id
+      # 逻辑删除字段和值约定。
       logic-delete-field: deleted
       logic-delete-value: 1
       logic-not-delete-value: 0
@@ -43,17 +64,22 @@ management:
   endpoints:
     web:
       exposure:
+        # 默认只开放健康检查和基础信息，减少 actuator 暴露面。
         include: health,info
   endpoint:
     health:
       probes:
+        # 启用 liveness/readiness 探针，便于容器编排系统接入。
         enabled: true
+      # 公共健康检查不暴露依赖明细。
       show-details: never
 
 springdoc:
   swagger-ui:
+    # Swagger UI 访问入口。
     path: /swagger-ui.html
   api-docs:
+    # OpenAPI JSON 文档地址。
     path: /v3/api-docs
 
 knife4j:
@@ -63,11 +89,15 @@ knife4j:
 
 app:
   jwt:
+    # JWT 鉴权过滤器总开关。
     enabled: true
+    # token 签发方，生成和校验 token 时保持一致。
     issuer: demo-service
     include-paths:
+      # 默认保护所有路径，再通过 exclude 明确放行公开接口。
       - "/**"
     exclude-paths:
+      # 登录、文档、健康检查和框架错误路径不要求 JWT。
       - "/auth/login"
       - "/auth/token/test"
       - "/doc.html"
@@ -81,12 +111,17 @@ app:
       - "/error"
 
   log:
+    # 下游 Filter/Controller 执行前先输出 BEGIN 日志。
     begin-enabled: true
+    # 请求体和响应体会先脱敏再写日志。
     request-body-enabled: true
     response-body-enabled: true
+    # 开启加解密时，false 记录密文信封，true 记录解密后的明文数据。
     plain-crypto-body-enabled: false
+    # 脱敏后的 body 最大日志长度。
     max-body-length: 3000
     exclude-paths:
+      # 排除高频、文档或二进制文件类接口，降低日志噪声。
       - "/actuator/**"
       - "/doc.html"
       - "/webjars/**"
@@ -96,21 +131,29 @@ app:
       - "/files/**"
 
   distributed-lock:
+    # 分布式锁基础默认值，业务层可按场景覆盖。
     enabled: true
+    # 锁竞争时最多等待多久。
     default-wait-time-seconds: 3
+    # 拿到锁后的自动释放时间。
     default-lease-time-seconds: 10
 
   repeat-submit:
+    # @NoRepeatSubmit 短窗口防重复提交总开关。
     enabled: true
+    # 注解未指定 seconds 时使用的默认窗口。
     default-seconds: 5
 
   scheduler:
+    # 定时任务开关，当前主要控制示例任务和后续扩展任务。
     enabled: true
     pool-size: 4
     thread-name-prefix: demo-scheduler-
+    # 停机时等待定时任务结束的最长时间。
     await-termination-seconds: 30
 
   http-client:
+    # 出站 HTTP 客户端默认配置。
     connect-timeout-millis: 3000
     read-timeout-millis: 10000
     user-agent: external-api-foundation
@@ -119,32 +162,42 @@ app:
 
   task:
     local-serial-demo:
+      # 示例任务默认关闭，避免普通开发环境产生后台写入。
       enabled: false
       fixed-delay: 5000
     distributed-serial-demo:
+      # 用于演示多实例下分布式锁串行执行的示例任务。
       enabled: false
       fixed-delay: 5000
 
   security:
     replay:
+      # 请求进入 Controller 前校验 timestamp、nonce 和签名，防止重放。
       enabled: false
+      # X-Timestamp 允许的时间偏移窗口，单位秒。
       timestamp-window-seconds: 300
+      # 服务端选择验签算法，客户端不通过请求头决定算法。
       signature-algorithm: HMAC_SHA256
       include-paths:
+        # 外部合作方接口通常是重放防护的主要覆盖范围。
         - "/api/external/**"
       exclude-paths:
+        # 登录、文档和健康检查不启用重放防护。
         - "/auth/login"
         - "/doc.html"
         - "/v3/api-docs/**"
         - "/actuator/health"
 
   crypto:
+    # 请求解密和响应加密总开关。
     enabled: false
     request-decrypt:
+      # 请求解密和响应加密可以分别开关。
       enabled: true
       include-paths:
         - "/**"
       exclude-paths:
+        # 公开接口和框架路径不要求加密请求体。
         - "/auth/login"
         - "/auth/token/test"
         - "/doc.html"
@@ -159,6 +212,7 @@ app:
       include-paths:
         - "/**"
       exclude-paths:
+        # 公开接口和框架路径保持普通 JSON 响应。
         - "/auth/login"
         - "/auth/token/test"
         - "/doc.html"

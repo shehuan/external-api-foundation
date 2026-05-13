@@ -4,14 +4,11 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.example.externalapi.entity.BaseEntity;
-
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
  * <p>
- * 用户信息�?
+ * 用户信息。
  * </p>
  *
  * @author codex
@@ -23,85 +20,85 @@ public class SysUserEntity extends BaseEntity {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 用户ID
+     * 用户 ID。
      */
     @TableId(value = "user_id", type = IdType.AUTO)
     private Long userId;
 
     /**
-     * 部门ID
+     * 部门 ID。
      */
     @TableField("dept_id")
     private Long deptId;
 
     /**
-     * 用户账号
+     * 用户账号。
      */
     @TableField("user_name")
     private String userName;
 
     /**
-     * 用户昵称
+     * 用户昵称。
      */
     @TableField("nick_name")
     private String nickName;
 
     /**
-     * 用户类型�?0系统用户�?
+     * 用户类型。00 表示系统用户。
      */
     @TableField("user_type")
     private String userType;
 
     /**
-     * 用户邮箱
+     * 用户邮箱。
      */
     @TableField("email")
     private String email;
 
     /**
-     * 手机号码
+     * 手机号码。
      */
     @TableField("phonenumber")
     private String phonenumber;
 
     /**
-     * 用户性别�?�?1�?2未知�?
+     * 用户性别。0 男，1 女，2 未知。
      */
     @TableField("sex")
     private Integer sex;
 
     /**
-     * 头像地址
+     * 头像地址。
      */
     @TableField("avatar")
     private String avatar;
 
     /**
-     * 密码
+     * 密码摘要。
      */
     @TableField("password")
     private String password;
 
     /**
-     * 帐号状态（0正常 1停用�?
+     * 账号状态。0 正常，1 停用。
      */
     @TableField("status")
     private Integer status;
 
     /**
-     * 最后登录IP
+     * 最后登录 IP。
      */
     @TableField("login_ip")
     private String loginIp;
 
     /**
-     * 最后登录时�?
+     * 最后登录时间。
      */
     @TableField("login_date")
     private LocalDateTime loginDate;
 
     /**
-     * 备注
+     * 备注。
      */
     @TableField("remark")
     private String remark;
