@@ -1,0 +1,28 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/demo_service?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+
+app:
+  jwt:
+    secret: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+    access-token-expire-minutes: 120
+
+  security:
+    replay:
+      clients:
+        - app-id: partner-a
+          signature-key: secret-a
+          enabled: true
+
+  crypto:
+    clients:
+      - app-id: partner-a
+        secret: placeholder-secret
+        enabled: true
